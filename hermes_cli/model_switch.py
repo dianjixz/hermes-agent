@@ -1589,6 +1589,12 @@ def list_authenticated_providers(
             if not raw_name or not api_url:
                 continue
             api_key = (entry.get("api_key") or "").strip()
+            # Resolve key_env to the actual key value so entries that share
+            # an endpoint but use different env-backed credentials stay in
+            # separate picker rows, matching inline api_key behavior.
+            if not api_key:
+                key_env = (entry.get("key_env") or "").strip()
+                api_key = os.environ.get(key_env, "").strip() if key_env else ""
 
             group_key = (api_url, api_key)
             if group_key not in groups:

@@ -259,3 +259,37 @@ def test_current_custom_endpoint_passthrough_marks_current_row(monkeypatch):
     assert row["slug"] == "custom:ollama"
     assert row["is_current"] is True
     assert row["models"] == ["glm-5.1", "qwen3"]
+
+
+def test_custom_provider_grouping_resolves_key_env(monkeypatch):
+    """Section 4 groups custom_providers by resolved key_env credentials."""
+    monkeypatch.setenv("KEY_A", "token-a")
+    monkeypatch.setenv("KEY_B", "token-b")
+    monkeypatch.setattr("agent.models_dev.fetch_models_dev", lambda: {})
+    monkeypatch.setattr("agent.models_dev.PROVIDER_TO_MODELS_DEV", {})
+    monkeypatch.setattr("hermes_cli.providers.HERMES_OVERLAYS", {})
+    monkeypatch.setattr("hermes_cli.models.fetch_openrouter_models",
+                        lambda *a, **kw: [])
+
+    result = model_switch.list_picker_providers(
+        user_providers={},
+        custom_providers=[
+            {
+                "name": "Gateway — Alpha",
+                "base_url": "http://gateway.example/v1",
+                "key_env": "KEY_A",
+                "model": "alpha",
+            },
+            {
+                "name": "Gateway — Beta",
+                "base_url": "http://gateway.example/v1",
+                "key_env": "KEY_B",
+                "model": "beta",
+            },
+        ],
+        max_models=50,
+    )
+
+    custom_rows = [p for p in result if p.get("is_user_defined")]
+    assert len(custom_rows) == 2
+    assert [row["models"] for row in custom_rows] == [["alpha"], ["beta"]]
